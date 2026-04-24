@@ -4,6 +4,8 @@ import streamlit as st
 import matplotlib.pyplot as plt
 from datetime import datetime
 from agente import AgenteAnaliseDados
+from configLog import configLog
+logger = configLog(__name__)
 
 agente = AgenteAnaliseDados()
 
@@ -18,20 +20,22 @@ SUGGESTIONS = {
         "Qual o período dos dados que você tem acesso? Quais as colunas e o que representam?"
     ),
     ":orange[:material/multiline_chart:] Crie um gráfico de evolução de vendas": (
-        "Monte um gráfico de evolução semanal do faturamento acumulado, de janeiro até março"
+        "Monte um gráfico de evolução semanal do faturamento, de janeiro até março"
     ),
-    ":red[:material/deployed_code:] Extraia um relatório de vendas por marca": (
-        "Preciso de um relatório com o ranking top 10 dos clientes que mais compraram as seguintes marcas: DAILUS, FELPS e WELLA. Separado por marca. Mostrar o nome do cliente e valor total de compra nos últimos 3 meses"
+    ":red[:material/deployed_code:] Extraia um relatório de vendas": (
+        "Preciso de um relatório de vendas por vendedor do último mês completo disponível nos dados. Deve constar o nome, o faturamento total, o número de pedidos, o número de clientes, o número de marcas atendidas e o número de SKUs vendidos. Ordenado por total faturado."
     ),
 }
 
-def response_generator(response):    
-    if isinstance(response, list):
-        for line in response:
-            yield "\n"
-            for word in line.split():
-                time.sleep(0.05)
-                yield word + " "
+def response_generator(response=None):
+    if not response and "messages" in st.session_state:
+        response = st.session_state.messages[-1]['content']
+    response_lines = response.split('\n')    
+    for line in response_lines:
+        yield "\n"
+        for word in line.split():
+            time.sleep(0.01)
+            yield word + " "
 
 def get_graph_bytes():
     buf = io.BytesIO()
@@ -96,9 +100,9 @@ for message in st.session_state.messages:
         if "chart" in message:
             st.image(message["chart"], width='stretch')
             
-        if "data_df" in message:
-            with st.expander("Ver dados"):
-                st.dataframe(message["data_df"], width='stretch') 
+        # if "data_df" in message:
+        #     with st.expander("Ver dados"):
+        #         st.dataframe(message["data_df"], width='stretch') 
 
 if prompt:
     # Display user message in chat message container
@@ -108,17 +112,17 @@ if prompt:
         st.markdown(prompt)
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
+    # logger.debug(f"User prompt: {st.session_state.messages[-1]['content']}")    
 
     # Display assistant response in chat message container
     with chat_box.chat_message("assistant"):
         with st.spinner(":speech_balloon:"):
-            agent_output, dataframe = agente.analisar(prompt)
-        stream = agent_output if agent_output != 'Agent stopped due to max iterations.' else 'Desculpe, não consegui processar sua solicitação. Tente formular a pergunta de outra forma, por gentileza.'
-        st.write_stream(response_generator(stream.split('\n')))
+            # agent_output = agente.analisar(prompt)
+            agente.analisar(prompt)
+        st.write_stream(response_generator())
         
-        if dataframe is not None:            
-            xlsx_data = to_excel(dataframe)
-            st.session_state.messages[-1]["data_file"] = xlsx_data            
+        if st.session_state.messages[-1]["data_df"] is not None:
+            xlsx_data = to_excel(st.session_state.messages[-1]["data_df"])
             st.download_button(
                 label="📥 Baixar Excel",
                 data=xlsx_data,
@@ -137,6 +141,4 @@ if prompt:
                 mime="image/png",
                 key=f"dl_btn_{len(st.session_state.messages)}"
             )      
-            plt.close('all') # Limpa a memória para o próximo gráfico
-    # Add assistant response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": stream})    
+            plt.close('all') # Limpa a memória para o próximo gráfico   
