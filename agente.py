@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from etl import Loader, Transformer
+from configLog import configLog
+logger = configLog(__name__)
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_AGENTE")
@@ -73,6 +75,7 @@ class AgenteAnaliseDados:
         self.montar_prompt()
         
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+        # llm = ChatOpenAI(model="gpt-5.4-nano-2026-03-17", temperature=0)
 
         return create_pandas_dataframe_agent(
             llm,
@@ -82,32 +85,55 @@ class AgenteAnaliseDados:
             prefix=self.prefix_instrucao,
             allow_dangerous_code=True,
             agent_executor_kwargs={"handle_parsing_errors":True},
-            return_intermediate_steps=True
+            return_intermediate_steps=True,
+            max_iterations=5
         )
 
     def analisar(self, pergunta):
         if self.agente is None:
-            self.agente = self.carregar_agente()
-            
-        print("tamanho do historico: ",len(st.session_state.context)) 
+            self.agente = self.carregar_agente()           
         
-        str_input = self.transformer.processar_input(pergunta)
-        
+        # logger.debug(f"Analyzing question: {pergunta}")
+        str_input = self.transformer.processar_input(pergunta)        
+        # logger.debug(f"Processed input: {str_input}")
         st.session_state.context.append({"role": "user", "content": str_input})
         
         agent_invoke = {
             "input":str_input,
             "chat_history": st.session_state.context
         }
-                
-        response = self.agente.invoke(agent_invoke)
-        
+
+        logger.debug(f"Invoking agent with input: {agent_invoke}")                
+        response = self.agente.invoke(agent_invoke)        
         st.session_state.context.append({"role": "assistant", "content": response.get('output','')})
 
         df_para_download = None
-        for step in response.get("intermediate_steps", []):
-            observation = step[1] 
+        codigo_gerado = ""
+        for action, observation in response.get("intermediate_steps", []):
+            codigo_gerado += action.tool_input['query'] + "\n"
+            # codigo_gerado += action.tool_input + "\n"
             if isinstance(observation, pd.DataFrame):
                 df_para_download = observation
-                
-        return self.transformer.processar_output(response.get('output')), df_para_download
+
+        if response.get('output') in ['Agent stopped due to max iterations.','Agent stopped due to iteration limit or time limit.']:
+            stream = 'Desculpe, não consegui processar sua solicitação. Tente formular a pergunta de outra forma, por gentileza.'
+        else:
+            stream = self.transformer.processar_output(response.get('output'))
+
+        st.session_state.context.append({
+                "role": "assistant",
+                "content": response.get('output',''),
+                "data_df": df_para_download,
+                "code": codigo_gerado
+            })
+
+        st.session_state.messages.append({
+                "role": "assistant",
+                "content": stream,
+                "data_df": df_para_download,
+                "code": codigo_gerado
+            })
+
+        logger.debug(f"Agent response: {st.session_state.messages[-1]}")
+
+        return True
