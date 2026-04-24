@@ -146,7 +146,7 @@ class Transformer:
         resultados = []
         encontrado = {}
         
-        logger.info("input: %s", input)
+        # logger.info("input: %s", input)
 
         for coluna, valores in self.mapeamentos.items():
             for chave, valor in valores.items():
@@ -154,8 +154,8 @@ class Transformer:
                     resultados.append({"origem":chave,"destino":valor})
 
         if not resultados:
-            logger.info(f"processar_input:: Resultados não encontrados.") 
-            return {}, input_raw.upper()
+            # logger.info(f"processar_input:: Resultados não encontrados.") 
+            return input_raw.upper()
 
         if len(resultados) == 1:
             encontrado = resultados[0]
@@ -164,9 +164,9 @@ class Transformer:
             tem_grupo = "GRUPO" in input_raw.upper()
             tem_produto = "PRODUTO" in input_raw.upper()
             
-            logger.info("tem_marca: %s",tem_marca)
-            logger.info("tem_grupo: %s",tem_grupo)
-            logger.info("tem_produto: %s",tem_produto)
+            # logger.info("tem_marca: %s",tem_marca)
+            # logger.info("tem_grupo: %s",tem_grupo)
+            # logger.info("tem_produto: %s",tem_produto)
             
             if tem_marca and not all([tem_grupo,tem_produto]):
                 encontrado = [r for r in resultados if "MARCA" in r.get('destino')]
@@ -193,12 +193,12 @@ class Transformer:
                     resultados.append({"origem":valor,"destino":chave})
 
         if not resultados:
-            logger.info(f"processar_output:: Resultados não encontrados.") 
+            # logger.info(f"processar_output:: Resultados não encontrados.") 
             return output_raw
         
         output_tratado:str = output_raw
         for r in resultados:
             output_tratado = output_tratado.replace(r.get('origem'),r.get('destino'))            
-        logger.info(f"processar_output:: resultados={resultados}")
+        # logger.info(f"processar_output:: resultados={resultados}")
             
         return output_tratado
