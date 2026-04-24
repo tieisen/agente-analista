@@ -33,7 +33,7 @@ def configLog(name:str) -> logging:
                         encoding='utf-8',
                         format=os.getenv('LOGGER_FORMAT'),
                         datefmt='%Y-%m-%d %H:%M:%S',
-                        level=logging.INFO)
+                        level=logging.DEBUG)
     # silencia libs verbosas
     logging.getLogger("apscheduler").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)                        
