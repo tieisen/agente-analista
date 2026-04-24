@@ -7,7 +7,7 @@ from agente import AgenteAnaliseDados
 
 agente = AgenteAnaliseDados()
 
-st.set_page_config(page_title="Agente de Análise de Dados com OpenIA", page_icon="✨")
+st.set_page_config(page_title="Agente de Dados", page_icon="✨")
 st.title("Agente de Análise de Dados com OpenIA")
 
 SUGGESTIONS = {
@@ -103,7 +103,6 @@ for message in st.session_state.messages:
 if prompt:
     # Display user message in chat message container
     with chat_box.chat_message("user"):
-        # st.markdown(prompt)
         if user_just_clicked_suggestion or user_just_asked_initial_question:
             prompt = "✨ "+prompt
         st.markdown(prompt)
